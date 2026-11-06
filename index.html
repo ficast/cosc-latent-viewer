@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Espaços latentes da COS</title>
+  <meta name="description" content="Classes de floresta e matos da COSc 2023 nos espaços latentes de três foundation models de píxel (GeoTessera, AlphaEarth, Presto), tile Sentinel-2 29TNE, com o OrtoSat 2023 da DGT.">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Classes de floresta e matos da COSc 2023 nos espaços latentes de modelos de píxel</h1>
+    <p class="lede">Tile Sentinel-2 <strong>29TNE</strong> (região de Coimbra), 2023. Cada ponto é um píxel de 10 m de uma classe da COS, colocado segundo o seu <em>embedding</em> num <em>foundation model</em>. Passe o rato por um ponto para ver o píxel no mapa; clique para aproximar. No mapa, clique num píxel para o encontrar na projeção.</p>
+  </header>
+
+  <section class="controls" aria-label="Escolha da projeção">
+    <div class="group" role="group" aria-label="Modelo"><span class="label">Modelo</span><div class="seg" id="models"></div></div>
+    <div class="group" role="group" aria-label="Método"><span class="label">Método</span><div class="seg" id="methods"></div></div>
+    <div class="group" role="group" aria-label="Semente"><span class="label">Semente</span><div class="seg" id="seeds"></div></div>
+    <div class="group grow" role="group" aria-label="Classes"><span class="label">Classes</span><div class="chips" id="classes"></div></div>
+  </section>
+
+  <main class="views">
+    <figure class="panel" id="scatter-panel">
+      <figcaption id="scatter-title">Projeção</figcaption>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="scatter" aria-label="Projeção 2D dos embeddings"></canvas>
+        <div class="tooltip" id="tooltip" hidden></div>
+      </div>
+      <p class="note">Os eixos de uma projeção não têm significado, e o desenho muda com o método e a semente. Compare modelos pelas métricas abaixo, não pelo desenho.</p>
+    </figure>
+    <figure class="panel" id="map-panel">
+      <figcaption id="map-title">Mapa — OrtoSat 2023 (DGT)</figcaption>
+      <div id="map" aria-label="Mapa com os píxeis da amostra"></div>
+      <p class="note" id="pixel-info">Nenhum píxel selecionado.</p>
+    </figure>
+  </main>
+
+  <section class="about">
+    <h2>Sobre os dados e os modelos</h2>
+    <div class="about-grid">
+      <div>
+        <h3>COSc 2023 (classes)</h3>
+        <p>A <strong>Carta de Ocupação do Solo conjuntural</strong> (COSc) da Direção-Geral do Território (DGT) é um mapa anual de Portugal continental com píxeis de 10 m, produzido a partir de imagens Sentinel-2 com um classificador por unidade de paisagem. Aqui usam-se as classes de floresta (300) e matos (410) presentes no tile; as classes com muito pouca área no tile (sobreiro e azinheira, pinheiro-manso, outras resinosas; menos de 0,2 % cada) ficaram de fora.</p>
+        <p>Para cada classe sortearam-se 2 000 píxeis <strong>puros</strong> (rodeados por uma janela 3 × 3 da mesma classe), por isso a separação é otimista face ao tile inteiro, onde há orlas e mistura. A COSc é um produto modelado: tem erros, e há acácia não marcada dentro das classes de folhosas, eucalipto e matos.</p>
+      </div>
+      <div>
+        <h3>Os três <em>foundation models</em> de píxel</h3>
+        <p>Modelos pré-treinados sem rótulos em grandes volumes de imagens de satélite, que transformam a série temporal de cada píxel num vetor (<em>embedding</em>). Não foram treinados com a COSc nem afinados para estas classes.</p>
+        <ul>
+          <li><strong>GeoTessera / TESSERA</strong> (Feng et al., 2025; Universidade de Cambridge): embedding anual de 128 dimensões por píxel de 10 m, a partir das séries Sentinel-1 e Sentinel-2 do ano. Embeddings de 2023 publicados.</li>
+          <li><strong>AlphaEarth Foundations</strong> (Brown et al., 2025; Google DeepMind): embedding anual de 64 dimensões por píxel de 10 m, a partir de várias fontes (Sentinel-2, Sentinel-1, Landsat e outras). Embeddings de 2023 publicados.</li>
+          <li><strong>Presto</strong> (Tseng et al., 2023; NASA Harvest): transformer leve para séries temporais de um píxel, pré-treinado com Sentinel-1, Sentinel-2, clima (ERA5) e relevo. Aqui foi corrido por nós sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, clima nem relevo, o que o deixa em desvantagem.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Projeções e métricas</h3>
+        <p>Os embeddings têm 64 ou 128 dimensões. Para os ver em 2D usam-se o <strong>UMAP</strong> e o <strong>t-SNE</strong>, que tentam manter juntos os píxeis que são vizinhos no espaço original. São métodos estocásticos e sensíveis aos parâmetros: os eixos não têm significado, e as distâncias entre grupos afastados não são fiáveis. Cada combinação foi corrida com três sementes.</p>
+        <p>Por isso, a comparação entre modelos faz-se com <strong>métricas no espaço original</strong> (pureza e confusão dos vizinhos, abaixo), que não dependem da projeção.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="metrics">
+    <h2>Como cada modelo separa as classes</h2>
+    <p class="lede">Métricas calculadas no espaço original de cada modelo (antes da projeção), com os <span id="k-value">15</span> vizinhos mais próximos de cada píxel. Não dependem do método nem da semente.</p>
+    <div class="metric-grid">
+      <div>
+        <h3>Pureza dos vizinhos</h3>
+        <p class="small">Fração dos vizinhos de um píxel que são da mesma classe que ele, em média por classe. 1 = classes totalmente separadas; com 4 classes iguais, o acaso dá 0,25.</p>
+        <div class="table-wrap"><table id="purity"></table></div>
+      </div>
+      <div>
+        <h3>Com que classe se confunde cada classe</h3>
+        <p class="small">Linha = classe do píxel; coluna = classe dos vizinhos, em %. Cada linha soma 100; a diagonal é a pureza.</p>
+        <div class="conf-grid" id="confusion"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p><strong>Dados.</strong> Classes: COSc 2023 (DGT), 2 000 píxeis puros por classe (janela 3 × 3 da mesma classe); só as quatro classes principais 300/410 do tile (eucalipto, outras folhosas, pinheiro-bravo, matos; 99,7 % da área). Modelos: GeoTessera/TESSERA v1.1 (embeddings anuais 2023, 128 dim., Sentinel-1 + Sentinel-2); AlphaEarth Foundations (embeddings anuais 2023, 64 dim.); Presto (128 dim., calculado sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, ERA5 nem relevo). Projeções: UMAP e t-SNE de embeddings padronizados.</p>
+    <p><strong>Imagens.</strong> OrtoSat 2023 © Direção-Geral do Território (WMS). Sentinel-2 cloudless 2023 — <a href="https://s2maps.eu" target="_blank" rel="noopener">s2maps.eu</a> by EOX IT Services GmbH (contém dados Copernicus Sentinel modificados de 2023), CC BY-NC-SA 4.0.</p>
+    <p>Dissertação MIACD, Universidade de Coimbra — resultados preliminares.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>

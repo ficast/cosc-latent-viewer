@@ -1,0 +1,80 @@
+:root {
+  color-scheme: light;
+  --surface-0: #f4f3f0;
+  --surface-1: #fcfcfb;
+  --border: #dddbd5;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7974;
+  --accent: #0b0b0b;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.top, .controls, .views, .metrics, .foot { max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+.top { padding-top: 20px; }
+h1 { font-size: 20px; margin: 0 0 6px; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 0 0 4px; }
+.lede { color: var(--text-secondary); margin: 0 0 12px; max-width: 900px; }
+.small { color: var(--text-secondary); font-size: 12.5px; margin: 0 0 8px; }
+.note { color: var(--text-muted); font-size: 12.5px; margin: 8px 0 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; padding-bottom: 12px; }
+.group { display: flex; flex-direction: column; gap: 4px; }
+.group.grow { flex: 1 1 320px; }
+.label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface-1); }
+.seg button {
+  border: 0; background: transparent; padding: 6px 12px; font: inherit; color: var(--text-secondary); cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--text-primary); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-1); font: inherit; color: var(--text-primary); cursor: pointer;
+}
+.chip .sw { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface-1); }
+.chip[aria-pressed="false"] { color: var(--text-muted); }
+.chip[aria-pressed="false"] .sw { opacity: .25; }
+
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel { margin: 0; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; min-width: 0; }
+figcaption { font-weight: 600; margin-bottom: 8px; }
+.canvas-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; }
+#scatter { width: 100%; height: 100%; display: block; cursor: crosshair; }
+#map { width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; font-size: 12.5px; box-shadow: 0 2px 8px rgba(0,0,0,.12); white-space: nowrap;
+}
+.tooltip .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+
+.about, .metrics { max-width: 1400px; margin: 20px auto 0; padding: 0 16px; }
+.about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.about-grid p, .about-grid li { color: var(--text-secondary); font-size: 13px; margin: 0 0 8px; }
+.about-grid ul { padding-left: 18px; margin: 0; }
+.metric-grid { display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap: 20px; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+td.best { font-weight: 700; }
+.conf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.conf h4 { margin: 0 0 4px; font-size: 13px; }
+.conf table { font-size: 12px; width: 100%; }
+.conf td.cell { text-align: center; border: 2px solid var(--surface-1); }
+.conf th.col { writing-mode: vertical-rl; transform: rotate(180deg); height: 84px; text-align: left; font-weight: 500; }
+.foot { color: var(--text-secondary); font-size: 12.5px; padding: 20px 16px 32px; }
+.foot a { color: inherit; }
+
+@media (max-width: 860px) {
+  .views, .metric-grid, .about-grid { grid-template-columns: 1fr; }
+}
