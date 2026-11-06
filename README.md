@@ -1,6 +1,6 @@
 # Espaços latentes da COS
 
-Ferramenta de visual analytics da dissertação *Interpretable Latent Space Analysis for Forest Species using Satellite Images* (MIACD, Universidade de Coimbra). Ainda sem a *Acacia dealbata*.
+Ferramenta de visual analytics da dissertação *Interpretable Latent Space Analysis for Forest Species using Satellite Images* (MIACD, Universidade de Coimbra).
 
 Mostra como as classes de floresta e matos da COSc 2023 (eucalipto, outras folhosas, pinheiro-bravo, matos) se organizam nos espaços latentes de três *foundation models* de píxel (GeoTessera, AlphaEarth, Presto), no tile Sentinel-2 29TNE:
 

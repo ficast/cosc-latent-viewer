@@ -17,7 +17,6 @@
   <section class="controls" aria-label="Escolha da projeção">
     <div class="group" role="group" aria-label="Modelo"><span class="label">Modelo</span><div class="seg" id="models"></div></div>
     <div class="group" role="group" aria-label="Método"><span class="label">Método</span><div class="seg" id="methods"></div></div>
-    <div class="group" role="group" aria-label="Semente"><span class="label">Semente</span><div class="seg" id="seeds"></div></div>
     <div class="group grow" role="group" aria-label="Classes"><span class="label">Classes</span><div class="chips" id="classes"></div></div>
   </section>
 
@@ -28,7 +27,7 @@
         <canvas id="scatter" aria-label="Projeção 2D dos embeddings"></canvas>
         <div class="tooltip" id="tooltip" hidden></div>
       </div>
-      <p class="note">Os eixos de uma projeção não têm significado, e o desenho muda com o método e a semente. Compare modelos pelas métricas abaixo, não pelo desenho.</p>
+      <p class="note">Os eixos de uma projeção não têm significado, e o desenho muda com o método. Compare modelos pelas métricas abaixo, não pelo desenho.</p>
     </figure>
     <figure class="panel" id="map-panel">
       <figcaption id="map-title">Mapa — OrtoSat 2023 (DGT)</figcaption>
@@ -43,7 +42,7 @@
       <div>
         <h3>COSc 2023 (classes)</h3>
         <p>A <strong>Carta de Ocupação do Solo conjuntural</strong> (COSc) da Direção-Geral do Território (DGT) é um mapa anual de Portugal continental com píxeis de 10 m, produzido a partir de imagens Sentinel-2 com um classificador por unidade de paisagem. Aqui usam-se as classes de floresta (300) e matos (410) presentes no tile; as classes com muito pouca área no tile (sobreiro e azinheira, pinheiro-manso, outras resinosas; menos de 0,2 % cada) ficaram de fora.</p>
-        <p>Para cada classe sortearam-se 2 000 píxeis <strong>puros</strong> (rodeados por uma janela 3 × 3 da mesma classe), por isso a separação é otimista face ao tile inteiro, onde há orlas e mistura. A COSc é um produto modelado: tem erros, e há acácia não marcada dentro das classes de folhosas, eucalipto e matos.</p>
+        <p>Para cada classe sortearam-se 2 000 píxeis <strong>puros</strong> (rodeados por uma janela 3 × 3 da mesma classe), por isso a separação é otimista face ao tile inteiro, onde há orlas e mistura. A COSc é um produto modelado e tem erros de classificação.</p>
       </div>
       <div>
         <h3>Os três <em>foundation models</em> de píxel</h3>
@@ -56,7 +55,7 @@
       </div>
       <div>
         <h3>Projeções e métricas</h3>
-        <p>Os embeddings têm 64 ou 128 dimensões. Para os ver em 2D usam-se o <strong>UMAP</strong> e o <strong>t-SNE</strong>, que tentam manter juntos os píxeis que são vizinhos no espaço original. São métodos estocásticos e sensíveis aos parâmetros: os eixos não têm significado, e as distâncias entre grupos afastados não são fiáveis. Cada combinação foi corrida com três sementes.</p>
+        <p>Os embeddings têm 64 ou 128 dimensões. Para os ver em 2D usam-se o <strong>UMAP</strong> e o <strong>t-SNE</strong>, que tentam manter juntos os píxeis que são vizinhos no espaço original. São métodos estocásticos e sensíveis aos parâmetros: os eixos não têm significado, e as distâncias entre grupos afastados não são fiáveis. Cada combinação foi corrida com três sementes; como a inicialização é determinística (espectral no UMAP, PCA no t-SNE), os desenhos são praticamente iguais, e mostra-se só a primeira.</p>
         <p>Por isso, a comparação entre modelos faz-se com <strong>métricas no espaço original</strong> (pureza e confusão dos vizinhos, abaixo), que não dependem da projeção.</p>
       </div>
     </div>
@@ -82,7 +81,7 @@
   <footer class="foot">
     <p><strong>Dados.</strong> Classes: COSc 2023 (DGT), 2 000 píxeis puros por classe (janela 3 × 3 da mesma classe); só as quatro classes principais 300/410 do tile (eucalipto, outras folhosas, pinheiro-bravo, matos; 99,7 % da área). Modelos: GeoTessera/TESSERA v1.1 (embeddings anuais 2023, 128 dim., Sentinel-1 + Sentinel-2); AlphaEarth Foundations (embeddings anuais 2023, 64 dim.); Presto (128 dim., calculado sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, ERA5 nem relevo). Projeções: UMAP e t-SNE de embeddings padronizados.</p>
     <p><strong>Imagens.</strong> OrtoSat 2023 © Direção-Geral do Território (WMS). Sentinel-2 cloudless 2023 — <a href="https://s2maps.eu" target="_blank" rel="noopener">s2maps.eu</a> by EOX IT Services GmbH (contém dados Copernicus Sentinel modificados de 2023), CC BY-NC-SA 4.0.</p>
-    <p>Dissertação MIACD, Universidade de Coimbra — resultados preliminares.</p>
+    <p>Autor: Filipe de Castro Oliveira — dissertação MIACD, Universidade de Coimbra (resultados preliminares). Código: <a href="https://github.com/ficast/cosc-latent-viewer" target="_blank" rel="noopener">github.com/ficast/cosc-latent-viewer</a>.</p>
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>

@@ -20,7 +20,6 @@ function init(data) {
   document.getElementById("k-value").textContent = D.k;
   buildSeg("models", D.models, "model");
   buildSeg("methods", D.methods, "method");
-  buildSeg("seeds", D.seeds, "seed");
   buildChips();
   buildMetrics();
   canvas = document.getElementById("scatter");
@@ -97,7 +96,7 @@ function resizeCanvas() {
     if (!grid.map.has(key)) grid.map.set(key, []);
     grid.map.get(key).push(i);
   }
-  document.getElementById("scatter-title").textContent = `${state.model} · ${state.method} · semente ${state.seed}`;
+  document.getElementById("scatter-title").textContent = `${state.model} · ${state.method}`;
 }
 
 function draw() {
