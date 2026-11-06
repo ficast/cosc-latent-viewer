@@ -1,4 +1,4 @@
-# Espaços latentes da COS
+# Espaços latentes da COSc 2023
 
 Ferramenta de visual analytics da dissertação *Interpretable Latent Space Analysis for Forest Species using Satellite Images* (MIACD, Universidade de Coimbra).
 
