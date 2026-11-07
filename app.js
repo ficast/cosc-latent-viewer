@@ -157,14 +157,16 @@ function onMove(e) {
   setHover(nearest(e.clientX - r.left, e.clientY - r.top));
 }
 
-function setHover(i) {
+function setHover(i, fromMap = false) {
+  // fromMap: hover on a map marker; the map does not pan (it would move under the mouse)
   if (i === state.hover) return;
   state.hover = i;
   draw();
   const tip = document.getElementById("tooltip");
   if (i < 0) { tip.hidden = true; showSquare(hoverSquare, -1); return; }
   const c = D.classes[D.pixels.cls[i]];
-  tip.innerHTML = `<span class="sw" style="background:${c.color}"></span><strong>${c.name}</strong><br>píxel linha ${D.pixels.row[i]}, coluna ${D.pixels.col[i]}<br><span class="small">clique para aproximar no mapa</span>`;
+  const hint = fromMap ? "no mapa; clique para selecionar" : "clique para aproximar no mapa";
+  tip.innerHTML = `<span class="sw" style="background:${c.color}"></span><strong>${c.name}</strong><br>píxel linha ${D.pixels.row[i]}, coluna ${D.pixels.col[i]}<br><span class="small">${hint}</span>`;
   tip.hidden = false;
   const x = screenXY[2 * i], y = screenXY[2 * i + 1];
   const w = canvas.getBoundingClientRect().width;
@@ -172,7 +174,7 @@ function setHover(i) {
   tip.style.top = `${y + 12}px`;
   showSquare(hoverSquare, i);
   const ll = L.latLng(D.pixels.lat[i], D.pixels.lon[i]);
-  if (!map.getBounds().pad(-0.1).contains(ll)) map.panTo(ll, { animate: true, duration: 0.3 });
+  if (!fromMap && !map.getBounds().pad(-0.1).contains(ll)) map.panTo(ll, { animate: true, duration: 0.3 });
 }
 
 // ---------- map ----------
@@ -205,17 +207,20 @@ function initMap() {
   L.control.scale({ imperial: false }).addTo(map);
   map.on("baselayerchange", e => { document.getElementById("map-title").textContent = `Mapa — ${e.name}`; });
 
+  // one canvas for markers and highlight squares: a second canvas on top would catch the mouse events
   const renderer = L.canvas({ padding: 0.3 });
   for (let i = 0; i < N; i++) {
     const m = L.circleMarker([D.pixels.lat[i], D.pixels.lon[i]], {
       renderer, radius: 3.5, weight: 1, color: "#fcfcfb", fillColor: D.classes[D.pixels.cls[i]].color, fillOpacity: 0.9,
     });
     m.on("click", () => select(i, false));
+    m.on("mouseover", () => setHover(i, true));
+    m.on("mouseout", () => { if (state.hover === i) setHover(-1); });
     m.addTo(map);
     markers.push(m);
   }
-  hoverSquare = L.rectangle([[0, 0], [0, 0]], { color: "#ffffff", weight: 2, opacity: 0, fillOpacity: 0, interactive: false }).addTo(map);
-  selectSquare = L.rectangle([[0, 0], [0, 0]], { color: "#ffd400", weight: 3, opacity: 0, fillOpacity: 0, interactive: false }).addTo(map);
+  hoverSquare = L.rectangle([[0, 0], [0, 0]], { color: "#ffffff", weight: 2, opacity: 0, fillOpacity: 0, interactive: false, renderer }).addTo(map);
+  selectSquare = L.rectangle([[0, 0], [0, 0]], { color: "#ffd400", weight: 3, opacity: 0, fillOpacity: 0, interactive: false, renderer }).addTo(map);
   map.fitBounds(L.latLngBounds(D.pixels.lat.map((la, i) => [la, D.pixels.lon[i]])), { padding: [10, 10] });
   map.on("zoomend", styleMarkers);
   styleMarkers();
