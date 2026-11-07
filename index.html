@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Espaços latentes da COSc 2023</title>
-  <meta name="description" content="Classes de floresta e matos da COSc 2023 nos espaços latentes de três foundation models de píxel (GeoTessera, AlphaEarth, Presto), tile Sentinel-2 29TNE, com o OrtoSat 2023 da DGT.">
+  <meta name="description" content="Classes de floresta e matos da COSc 2023 nos espaços latentes de seis foundation models de píxel (GeoTessera, AlphaEarth, Presto, OlmoEarth, Tessera v2, Galileo), tile Sentinel-2 29TNE, com o OrtoSat 2023 da DGT.">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -17,6 +17,7 @@
   <section class="controls" aria-label="Escolha da projeção">
     <div class="group" role="group" aria-label="Modelo"><span class="label">Modelo</span><div class="seg" id="models"></div></div>
     <div class="group" role="group" aria-label="Método"><span class="label">Método</span><div class="seg" id="methods"></div></div>
+    <div class="group" role="group" aria-label="Píxeis" id="mode-group" hidden><span class="label">Píxeis</span><div class="seg" id="modes"></div></div>
     <div class="group grow" role="group" aria-label="Classes"><span class="label">Classes</span><div class="chips" id="classes"></div></div>
   </section>
 
@@ -36,38 +37,13 @@
     </figure>
   </main>
 
-  <section class="about">
-    <h2>Sobre os dados e os modelos</h2>
-    <div class="about-grid">
-      <div>
-        <h3>COSc 2023 (classes)</h3>
-        <p>A <strong>Carta de Ocupação do Solo conjuntural</strong> (COSc) da Direção-Geral do Território (DGT) é um mapa anual de Portugal continental com píxeis de 10 m, produzido a partir de imagens Sentinel-2 com um classificador por unidade de paisagem. Aqui usam-se as classes de floresta (300) e matos (410) presentes no tile; as classes com muito pouca área no tile (sobreiro e azinheira, pinheiro-manso, outras resinosas; menos de 0,2 % cada) ficaram de fora.</p>
-        <p>Para cada classe sortearam-se 2 000 píxeis <strong>puros</strong> (rodeados por uma janela 3 × 3 da mesma classe), por isso a separação é otimista face ao tile inteiro, onde há orlas e mistura. A COSc é um produto modelado e tem erros de classificação.</p>
-      </div>
-      <div>
-        <h3>Os três <em>foundation models</em> de píxel</h3>
-        <p>Modelos pré-treinados sem rótulos em grandes volumes de imagens de satélite, que transformam a série temporal de cada píxel num vetor (<em>embedding</em>). Não foram treinados com a COSc nem afinados para estas classes.</p>
-        <ul>
-          <li><strong>GeoTessera / TESSERA</strong> (Feng et al., 2025; Universidade de Cambridge): embedding anual de 128 dimensões por píxel de 10 m, a partir das séries Sentinel-1 e Sentinel-2 do ano. Embeddings de 2023 publicados.</li>
-          <li><strong>AlphaEarth Foundations</strong> (Brown et al., 2025; Google DeepMind): embedding anual de 64 dimensões por píxel de 10 m, a partir de várias fontes (Sentinel-2, Sentinel-1, Landsat e outras). Embeddings de 2023 publicados.</li>
-          <li><strong>Presto</strong> (Tseng et al., 2023; NASA Harvest): transformer leve para séries temporais de um píxel, pré-treinado com Sentinel-1, Sentinel-2, clima (ERA5) e relevo. Aqui foi corrido por nós sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, clima nem relevo, o que o deixa em desvantagem.</li>
-        </ul>
-      </div>
-      <div>
-        <h3>Projeções e métricas</h3>
-        <p>Os embeddings têm 64 ou 128 dimensões. Para os ver em 2D usam-se o <strong>UMAP</strong> e o <strong>t-SNE</strong>, que tentam manter juntos os píxeis que são vizinhos no espaço original. São métodos estocásticos e sensíveis aos parâmetros: os eixos não têm significado, e as distâncias entre grupos afastados não são fiáveis. Cada combinação foi corrida com três sementes; como a inicialização é determinística (espectral no UMAP, PCA no t-SNE), os desenhos são praticamente iguais, e mostra-se só a primeira.</p>
-        <p>Por isso, a comparação entre modelos faz-se com <strong>métricas no espaço original</strong> (pureza e confusão dos vizinhos, abaixo), que não dependem da projeção.</p>
-      </div>
-    </div>
-  </section>
-
   <section class="metrics">
     <h2>Como cada modelo separa as classes</h2>
-    <p class="lede">Métricas calculadas no espaço original de cada modelo (antes da projeção), com os <span id="k-value">15</span> vizinhos mais próximos de cada píxel. Não dependem do método nem da semente.</p>
+    <p class="lede">Métricas calculadas no espaço original de cada modelo (antes da projeção), com os <span id="k-value">15</span> vizinhos mais próximos de cada píxel. Não dependem do método nem da semente, mas dependem dos píxeis escolhidos (puros, bordas ou todos): os vizinhos são procurados só entre os píxeis desse modo.</p>
     <div class="metric-grid">
       <div>
         <h3>Pureza dos vizinhos</h3>
-        <p class="small">Fração dos vizinhos de um píxel que são da mesma classe que ele, em média por classe. 1 = classes totalmente separadas; com 4 classes iguais, o acaso dá 0,25.</p>
+        <p class="small">Fração dos vizinhos de um píxel que são da mesma classe que ele, em média por classe. 1 = classes totalmente separadas; com 4 classes iguais, o acaso dá 0,25. Para cada modelo, <strong>P</strong> = só píxeis puros, <strong>B</strong> = só bordas, <strong>T</strong> = todos; as colunas do modo escolhido acima ficam destacadas, e o melhor modelo de cada linha e modo está a negrito. Os modelos aparecem por ordem de pureza média com todos os píxeis (T), em toda a página.</p>
         <div class="table-wrap"><table id="purity"></table></div>
       </div>
       <div>
@@ -78,8 +54,38 @@
     </div>
   </section>
 
+  <section class="about">
+    <h2>Sobre os dados e os modelos</h2>
+    <div class="about-grid">
+      <div>
+        <h3>COSc 2023 (classes)</h3>
+        <p>A <strong>Carta de Ocupação do Solo conjuntural</strong> (COSc) da Direção-Geral do Território (DGT) é um mapa anual de Portugal continental com píxeis de 10 m, produzido a partir de imagens Sentinel-2 com um classificador por unidade de paisagem. Aqui usam-se as classes de floresta (300) e matos (410) presentes no tile; as classes com muito pouca área no tile (sobreiro e azinheira, pinheiro-manso, outras resinosas; menos de 0,2 % cada) ficaram de fora.</p>
+        <p>A COSc é um produto modelado e tem erros de classificação. Os píxeis que o mapa de <em>Acacia dealbata</em> feito neste trabalho classifica como acácia (cerca de 2,5 % destas classes) ficam de fora; estão na <a href="https://acacia-dealbata-latent-viewer.vercel.app" target="_blank" rel="noopener">versão com a acácia</a>, que usa a mesma amostra.</p>
+        <p>Para cada classe há duas amostras de 2 000 píxeis: <strong>puros</strong> (rodeados por uma janela 3 × 3 da mesma classe, o interior das manchas) e <strong>de borda</strong> (os restantes: orlas, vizinhos de outra classe ou de acácia). Use o controlo <em>Píxeis</em> para ver só uns, só os outros ou todos; a projeção é a mesma, e as métricas são recalculadas para os píxeis escolhidos. Os puros separam-se muito melhor do que as bordas; em "todos" a mistura é meio a meio, não a proporção real do tile.</p>
+      </div>
+      <div>
+        <h3>Os seis <em>foundation models</em> de píxel</h3>
+        <p>Modelos pré-treinados sem rótulos em grandes volumes de imagens de satélite, que transformam a série temporal de cada píxel num vetor (<em>embedding</em>). Não foram treinados com a COSc nem afinados para estas classes.</p>
+        <ul>
+          <li><strong>GeoTessera / TESSERA</strong> (Feng et al., 2025; Universidade de Cambridge): embedding anual de 128 dimensões por píxel de 10 m, a partir das séries Sentinel-1 e Sentinel-2 do ano. Embeddings de 2023 publicados.</li>
+          <li><strong>AlphaEarth Foundations</strong> (Brown et al., 2025; Google DeepMind): embedding anual de 64 dimensões por píxel de 10 m, a partir de várias fontes (Sentinel-2, Sentinel-1, Landsat e outras). Embeddings de 2023 publicados.</li>
+          <li><strong>Presto</strong> (Tseng et al., 2023; NASA Harvest): transformer leve para séries temporais de um píxel, pré-treinado com Sentinel-1, Sentinel-2, clima (ERA5) e relevo. Aqui foi corrido por nós sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, clima nem relevo, o que o deixa em desvantagem.</li>
+          <li><strong>OlmoEarth v1.3</strong> (Herzog et al., 2025; Ai2): embedding anual de 128 dimensões a 10 m, a partir de um ano de Sentinel-1, Sentinel-2 e Landsat. É um ViT calculado a 20 m e atribuído aos píxeis de 10 m, por isso o embedding traz alguma informação da vizinhança. Embeddings de 2023 publicados.</li>
+          <li><strong>Tessera v2</strong> (Feng et al., 2026; Universidade de Cambridge): a nova geração da GeoTessera. Os embeddings v2 publicados ainda não cobrem este tile em 2023, por isso o modelo (Medium, 128 dimensões) foi corrido por nós sobre as observações válidas das 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1. Mesmo assim, fica ao nível da GeoTessera v1.1 publicada.</li>
+          <li><strong>Galileo</strong> (Tseng et al., 2025; NASA Harvest e Ai2): o sucessor do Presto, pré-treinado com muitas fontes. Corrido por nós (tamanho tiny, 192 dimensões) com a mesma entrada do Presto: 12 cenas mensais Sentinel-2 de 2023, sem as outras fontes.</li>
+        </ul>
+        <p>Os três últimos foram juntados nesta fase preliminar para comparação; a escolha final dos modelos ainda está em aberto.</p>
+      </div>
+      <div>
+        <h3>Projeções e métricas</h3>
+        <p>Os embeddings têm entre 64 e 192 dimensões. Para os ver em 2D usam-se o <strong>UMAP</strong> e o <strong>t-SNE</strong>, que tentam manter juntos os píxeis que são vizinhos no espaço original. São métodos estocásticos e sensíveis aos parâmetros: os eixos não têm significado, e as distâncias entre grupos afastados não são fiáveis. Cada combinação foi corrida com três sementes; como a inicialização é determinística (espectral no UMAP, PCA no t-SNE), os desenhos são praticamente iguais, e mostra-se só a primeira.</p>
+        <p>Por isso, a comparação entre modelos faz-se com <strong>métricas no espaço original</strong> (pureza e confusão dos vizinhos, acima), que não dependem da projeção.</p>
+      </div>
+    </div>
+  </section>
+
   <footer class="foot">
-    <p><strong>Dados.</strong> Classes: COSc 2023 (DGT), 2 000 píxeis puros por classe (janela 3 × 3 da mesma classe); só as quatro classes principais 300/410 do tile (eucalipto, outras folhosas, pinheiro-bravo, matos; 99,7 % da área). Modelos: GeoTessera/TESSERA v1.1 (embeddings anuais 2023, 128 dim., Sentinel-1 + Sentinel-2); AlphaEarth Foundations (embeddings anuais 2023, 64 dim.); Presto (128 dim., calculado sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, ERA5 nem relevo). Projeções: UMAP e t-SNE de embeddings padronizados.</p>
+    <p><strong>Dados.</strong> Classes: COSc 2023 (DGT), só as quatro classes principais 300/410 do tile (eucalipto, outras folhosas, pinheiro-bravo, matos; 99,7 % da área), sem os píxeis de acácia do mapa de 2023; 2 000 píxeis puros (janela 3 × 3 da mesma classe) e 2 000 de borda por classe. Modelos: GeoTessera/TESSERA v1.1 (embeddings anuais 2023, 128 dim., Sentinel-1 + Sentinel-2); AlphaEarth Foundations (embeddings anuais 2023, 64 dim.); Presto (128 dim., calculado sobre 12 cenas mensais Sentinel-2 de 2023, sem Sentinel-1, ERA5 nem relevo); OlmoEarth v1.3 (embeddings anuais 2023, 128 dim., Sentinel-1 + Sentinel-2 + Landsat); Tessera v2 Medium (128 dim., calculado sobre as 12 cenas mensais, sem Sentinel-1); Galileo tiny (192 dim., mesma entrada do Presto). Projeções: UMAP e t-SNE de embeddings padronizados.</p>
     <p><strong>Imagens.</strong> OrtoSat 2023 © Direção-Geral do Território (WMS). Sentinel-2 cloudless 2023 — <a href="https://s2maps.eu" target="_blank" rel="noopener">s2maps.eu</a> by EOX IT Services GmbH (contém dados Copernicus Sentinel modificados de 2023), CC BY-NC-SA 4.0.</p>
     <p>Autor: Filipe de Castro Oliveira — dissertação MIACD, Universidade de Coimbra (resultados preliminares). Código: <a href="https://github.com/ficast/cosc-latent-viewer" target="_blank" rel="noopener">github.com/ficast/cosc-latent-viewer</a>.</p>
   </footer>

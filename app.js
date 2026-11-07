@@ -1,8 +1,9 @@
 // Linked views: 2-D projection of pixel embeddings <-> map with the DGT OrtoSat 2023.
-// Data: data.json exported by notebook 47 of the thesis workspace.
+// Data: data.json exported by notebook 54 of the thesis workspace.
 "use strict";
 
-const state = { model: null, method: null, seed: null, hidden: new Set(), hover: -1, selected: -1 };
+const state = { model: null, method: null, seed: null, mode: null, hidden: new Set(), hover: -1, selected: -1 };
+const MODE_LABELS = { puros: "Puros", bordas: "Bordas", todos: "Todos" };
 let D, N, screenXY, grid, ctx, canvas, map, hoverSquare, selectSquare, markers = [];
 
 const fmt = (v, d = 2) => v.toLocaleString("pt-PT", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -14,12 +15,19 @@ fetch("data.json").then(r => r.json()).then(init).catch(err => {
 function init(data) {
   D = data;
   N = D.pixels.cls.length;
+  // models in order of importance: mean neighbour purity over the classes, all pixels
+  // (default mode); fixed for the session, so the buttons do not move when the mode changes
+  const ref = D.modes ? D.purity[D.default_mode] : D.purity;
+  const meanPurity = m => Object.values(ref[m]).reduce((a, b) => a + b, 0) / D.classes.length;
+  D.models = [...D.models].sort((a, b) => meanPurity(b) - meanPurity(a));
   state.model = D.models[0];
   state.method = D.methods[0];
   state.seed = D.seeds[0];
+  state.mode = D.modes ? D.default_mode : null;
   document.getElementById("k-value").textContent = D.k;
   buildSeg("models", D.models, "model");
   buildSeg("methods", D.methods, "method");
+  if (D.modes) buildModes();
   buildChips();
   buildMetrics();
   canvas = document.getElementById("scatter");
@@ -52,15 +60,56 @@ function buildSeg(id, values, key) {
   });
 }
 
+// pixel subset shown: pure (3 x 3 window of one class), border, or all
+function modeOK(i) {
+  if (!state.mode || state.mode === "todos") return true;
+  return (state.mode === "puros") === (D.pixels.pure[i] === 1);
+}
+function visible(i) { return !state.hidden.has(D.pixels.cls[i]) && modeOK(i); }
+const P = () => (state.mode ? D.purity[state.mode] : D.purity);
+const C = () => (state.mode ? D.confusion[state.mode] : D.confusion);
+
+function buildModes() {
+  document.getElementById("mode-group").hidden = false;
+  const el = document.getElementById("modes");
+  el.innerHTML = "";
+  D.modes.forEach(v => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = MODE_LABELS[v] || v;
+    b.setAttribute("aria-pressed", String(v === state.mode));
+    b.addEventListener("click", () => {
+      state.mode = v;
+      [...el.children].forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+      if (state.selected >= 0 && !modeOK(state.selected)) { state.selected = -1; showSquare(selectSquare, -1); }
+      setHover(-1);
+      resizeCanvas();
+      draw();
+      updateMarkers();
+      updateChipCounts();
+      buildMetrics();
+    });
+    el.appendChild(b);
+  });
+}
+
+function updateChipCounts() {
+  document.querySelectorAll("#classes .count").forEach((el, i) => {
+    let n = 0;
+    for (let j = 0; j < N; j++) if (D.pixels.cls[j] === i && modeOK(j)) n++;
+    el.textContent = `(${n})`;
+  });
+}
+
 function buildChips() {
   const el = document.getElementById("classes");
-  const counts = D.classes.map((_, i) => D.pixels.cls.filter(c => c === i).length);
+  const counts = D.classes.map((_, i) => D.pixels.cls.filter((c, j) => c === i && modeOK(j)).length);
   D.classes.forEach((c, i) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip";
     b.setAttribute("aria-pressed", "true");
-    b.innerHTML = `<span class="sw" style="background:${c.color}"></span>${c.name} <span class="small">(${counts[i]})</span>`;
+    b.innerHTML = `<span class="sw" style="background:${c.color}"></span>${c.name} <span class="small count">(${counts[i]})</span>`;
     b.title = "Mostrar/esconder a classe";
     b.addEventListener("click", () => {
       if (state.hidden.has(i)) state.hidden.delete(i); else state.hidden.add(i);
@@ -91,7 +140,7 @@ function resizeCanvas() {
   const cell = 12;
   grid = { cell, cols: Math.ceil(r.width / cell) + 1, map: new Map() };
   for (let i = 0; i < N; i++) {
-    if (state.hidden.has(D.pixels.cls[i])) continue;
+    if (!visible(i)) continue;
     const key = Math.floor(screenXY[2 * i] / cell) + grid.cols * Math.floor(screenXY[2 * i + 1] / cell);
     if (!grid.map.has(key)) grid.map.set(key, []);
     grid.map.get(key).push(i);
@@ -107,7 +156,7 @@ function draw() {
   const dim = state.selected >= 0;
   for (const i of order) {
     const c = D.pixels.cls[i];
-    if (state.hidden.has(c)) continue;
+    if (!visible(i)) continue;
     ctx.globalAlpha = dim ? 0.35 : 0.75;
     ctx.fillStyle = D.classes[c].color;
     ctx.beginPath();
@@ -116,7 +165,7 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   for (const [i, ring] of [[state.selected, 7], [state.hover, 6]]) {
-    if (i < 0 || state.hidden.has(D.pixels.cls[i])) continue;
+    if (i < 0 || !visible(i)) continue;
     const x = screenXY[2 * i], y = screenXY[2 * i + 1];
     ctx.lineWidth = 4; ctx.strokeStyle = "#fcfcfb";
     ctx.beginPath(); ctx.arc(x, y, ring, 0, 2 * Math.PI); ctx.stroke();
@@ -166,7 +215,10 @@ function setHover(i, fromMap = false) {
   if (i < 0) { tip.hidden = true; showSquare(hoverSquare, -1); return; }
   const c = D.classes[D.pixels.cls[i]];
   const hint = fromMap ? "no mapa; clique para selecionar" : "clique para aproximar no mapa";
-  tip.innerHTML = `<span class="sw" style="background:${c.color}"></span><strong>${c.name}</strong><br>píxel linha ${D.pixels.row[i]}, coluna ${D.pixels.col[i]}<br><span class="small">${hint}</span>`;
+  const p = D.pixels.p ? D.pixels.p[i] : null;
+  const prob = (p == null ? "" : `<br>probabilidade do mapa: ${fmt(p)}`) +
+    (D.pixels.pure ? `<br>${D.pixels.pure[i] ? "píxel puro (3 × 3)" : "píxel de borda"}` : "");
+  tip.innerHTML = `<span class="sw" style="background:${c.color}"></span><strong>${c.name}</strong>${prob}<br>píxel linha ${D.pixels.row[i]}, coluna ${D.pixels.col[i]}<br><span class="small">${hint}</span>`;
   tip.hidden = false;
   const x = screenXY[2 * i], y = screenXY[2 * i + 1];
   const w = canvas.getBoundingClientRect().width;
@@ -212,10 +264,8 @@ function initMap() {
   for (let i = 0; i < N; i++) {
     const m = L.circleMarker([D.pixels.lat[i], D.pixels.lon[i]], {
       renderer, radius: 3.5, weight: 1, color: "#fcfcfb", fillColor: D.classes[D.pixels.cls[i]].color, fillOpacity: 0.9,
+      interactive: false,
     });
-    m.on("click", () => select(i, false));
-    m.on("mouseover", () => setHover(i, true));
-    m.on("mouseout", () => { if (state.hover === i) setHover(-1); });
     m.addTo(map);
     markers.push(m);
   }
@@ -224,6 +274,31 @@ function initMap() {
   map.fitBounds(L.latLngBounds(D.pixels.lat.map((la, i) => [la, D.pixels.lon[i]])), { padding: [10, 10] });
   map.on("zoomend", styleMarkers);
   styleMarkers();
+
+  // hover and click anywhere on the map pick the nearest visible pixel (within 12 screen px),
+  // so the small dots do not have to be hit exactly
+  let raf = 0;
+  map.on("mousemove", e => {
+    const pt = e.containerPoint;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => setHover(nearestOnMap(pt), true));
+  });
+  map.on("mouseout", () => { cancelAnimationFrame(raf); setHover(-1, true); });
+  map.on("click", e => { const i = nearestOnMap(e.containerPoint); if (i >= 0) select(i, false); });
+}
+
+function nearestOnMap(pt, maxDist = 12) {
+  const b = map.getBounds();
+  let best = -1, bestD = maxDist * maxDist;
+  for (let i = 0; i < N; i++) {
+    if (!visible(i)) continue;
+    const lat = D.pixels.lat[i], lon = D.pixels.lon[i];
+    if (lat < b.getSouth() || lat > b.getNorth() || lon < b.getWest() || lon > b.getEast()) continue;
+    const q = map.latLngToContainerPoint([lat, lon]);
+    const d = (q.x - pt.x) ** 2 + (q.y - pt.y) ** 2;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
 }
 
 function styleMarkers() {
@@ -240,7 +315,7 @@ function styleMarkers() {
 
 function updateMarkers() {
   markers.forEach((m, i) => {
-    const hide = state.hidden.has(D.pixels.cls[i]);
+    const hide = !visible(i);
     if (hide && map.hasLayer(m)) map.removeLayer(m);
     if (!hide && !map.hasLayer(m)) m.addTo(map);
   });
@@ -261,18 +336,30 @@ function select(i, zoom) {
 function buildMetrics() {
   const names = D.classes.map(c => c.name);
   const t = document.getElementById("purity");
-  const best = names.map(n => Math.max(...D.models.map(m => D.purity[m][n])));
-  const mean = m => names.reduce((s, n) => s + D.purity[m][n], 0) / names.length;
-  const bestMean = Math.max(...D.models.map(mean));
-  t.innerHTML =
-    `<thead><tr><th>Classe</th>${D.models.map(m => `<th>${m}</th>`).join("")}</tr></thead><tbody>` +
-    names.map((n, j) => `<tr><td><span class="sw-inline" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${D.classes[j].color}"></span>${n}</td>` +
-      D.models.map(m => `<td class="${D.purity[m][n] === best[j] ? "best" : ""}">${fmt(D.purity[m][n])}</td>`).join("") + "</tr>").join("") +
-    `<tr><td><strong>Média</strong></td>${D.models.map(m => `<td class="${mean(m) === bestMean ? "best" : ""}">${fmt(mean(m))}</td>`).join("")}</tr></tbody>`;
+  // purity of every model in every pixel mode side by side (pure / border / all); the
+  // columns of the current mode are highlighted, and the best model of each row and mode is bold
+  const modes = D.modes || [null];
+  const pur = mode => (mode ? D.purity[mode] : D.purity);
+  const mean = (mode, m) => names.reduce((s, n) => s + pur(mode)[m][n], 0) / names.length;
+  const val = (mode, m, j) => (j < names.length ? pur(mode)[m][names[j]] : mean(mode, m));
+  const best = (mode, j) => Math.max(...D.models.map(m => val(mode, m, j)));
+  const short = { puros: "P", bordas: "B", todos: "T" };
+  const cls = (mode, k) => [k === 0 && modes.length > 1 ? "grp" : "", mode && mode === state.mode && modes.length > 1 ? "cur" : ""].join(" ");
+  const head = modes.length > 1
+    ? `<tr><th rowspan="2">Classe</th>${D.models.map(m => `<th colspan="${modes.length}" class="grp mhead">${m}</th>`).join("")}</tr>` +
+      `<tr>${D.models.map(() => modes.map((mode, k) => `<th class="${cls(mode, k)}" title="${MODE_LABELS[mode] || mode}">${short[mode] || mode}</th>`).join("")).join("")}</tr>`
+    : `<tr><th>Classe</th>${D.models.map(m => `<th>${m}</th>`).join("")}</tr>`;
+  const row = (j, label) => `<tr><td>${label}</td>` + D.models.map(m => modes.map((mode, k) => {
+    const v = val(mode, m, j);
+    return `<td class="${cls(mode, k)} ${v === best(mode, j) ? "best" : ""}">${fmt(v)}</td>`;
+  }).join("")).join("") + "</tr>";
+  t.innerHTML = `<thead>${head}</thead><tbody>` +
+    names.map((n, j) => row(j, `<span class="sw-inline" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${D.classes[j].color}"></span>${n}`)).join("") +
+    row(names.length, "<strong>Média</strong>") + "</tbody>";
 
   const box = document.getElementById("confusion");
   box.innerHTML = D.models.map(m => {
-    const M = D.confusion[m];
+    const M = C()[m];
     const head = `<tr><th></th>${names.map(n => `<th class="col">${n}</th>`).join("")}</tr>`;
     const rows = names.map((n, a) => `<tr><th>${n}</th>${M[a].map(v => {
       const bg = `rgba(42,120,214,${(0.08 + 0.92 * v).toFixed(2)})`;
