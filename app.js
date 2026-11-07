@@ -336,26 +336,29 @@ function select(i, zoom) {
 function buildMetrics() {
   const names = D.classes.map(c => c.name);
   const t = document.getElementById("purity");
-  // purity of every model in every pixel mode side by side (pure / border / all); the
-  // columns of the current mode are highlighted, and the best model of each row and mode is bold
+  // purity of every model in every pixel mode (pure / border / all): one small table per model,
+  // next to a table of class names; the columns of the current mode are highlighted and the best
+  // model of each row and mode is bold
   const modes = D.modes || [null];
   const pur = mode => (mode ? D.purity[mode] : D.purity);
   const mean = (mode, m) => names.reduce((s, n) => s + pur(mode)[m][n], 0) / names.length;
   const val = (mode, m, j) => (j < names.length ? pur(mode)[m][names[j]] : mean(mode, m));
   const best = (mode, j) => Math.max(...D.models.map(m => val(mode, m, j)));
   const short = { puros: "P", bordas: "B", todos: "T" };
-  const cls = (mode, k) => [k === 0 && modes.length > 1 ? "grp" : "", mode && mode === state.mode && modes.length > 1 ? "cur" : ""].join(" ");
-  const head = modes.length > 1
-    ? `<tr><th rowspan="2">Classe</th>${D.models.map(m => `<th colspan="${modes.length}" class="grp mhead">${m}</th>`).join("")}</tr>` +
-      `<tr>${D.models.map(() => modes.map((mode, k) => `<th class="${cls(mode, k)}" title="${MODE_LABELS[mode] || mode}">${short[mode] || mode}</th>`).join("")).join("")}</tr>`
-    : `<tr><th>Classe</th>${D.models.map(m => `<th>${m}</th>`).join("")}</tr>`;
-  const row = (j, label) => `<tr><td>${label}</td>` + D.models.map(m => modes.map((mode, k) => {
-    const v = val(mode, m, j);
-    return `<td class="${cls(mode, k)} ${v === best(mode, j) ? "best" : ""}">${fmt(v)}</td>`;
-  }).join("")).join("") + "</tr>";
-  t.innerHTML = `<thead>${head}</thead><tbody>` +
-    names.map((n, j) => row(j, `<span class="sw-inline" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${D.classes[j].color}"></span>${n}`)).join("") +
-    row(names.length, "<strong>Média</strong>") + "</tbody>";
+  const cur = mode => (mode && mode === state.mode && modes.length > 1 ? "cur" : "");
+  const rows = [...names.keys(), names.length];
+  const label = j => (j < names.length
+    ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:${D.classes[j].color}"></span>${names[j]}`
+    : "<strong>Média</strong>");
+  const namesTable = `<table class="pt pt-names"><thead><tr><th>&nbsp;</th></tr><tr><th>Classe</th></tr></thead><tbody>` +
+    rows.map(j => `<tr><td>${label(j)}</td></tr>`).join("") + "</tbody></table>";
+  const modelTable = m => `<table class="pt"><thead><tr><th class="mhead" colspan="${modes.length}">${m}</th></tr>` +
+    `<tr>${modes.map(mode => `<th class="${cur(mode)}" title="${MODE_LABELS[mode] || mode || ""}">${short[mode] || ""}</th>`).join("")}</tr></thead><tbody>` +
+    rows.map(j => `<tr>${modes.map(mode => {
+      const v = val(mode, m, j);
+      return `<td class="${cur(mode)} ${v === best(mode, j) ? "best" : ""}">${fmt(v)}</td>`;
+    }).join("")}</tr>`).join("") + "</tbody></table>";
+  t.innerHTML = namesTable + D.models.map(modelTable).join("");
 
   const box = document.getElementById("confusion");
   box.innerHTML = D.models.map(m => {

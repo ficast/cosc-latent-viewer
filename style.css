@@ -68,10 +68,16 @@ th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--bor
 th:first-child, td:first-child { text-align: left; }
 thead th { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
 td.best { font-weight: 700; }
-#purity .grp { border-left: 1px solid var(--border); }
-#purity th.mhead { text-align: center; }
-#purity .cur { background: rgba(42, 120, 214, 0.10); }
-#purity td { padding: 4px 6px; }
+/* purity: one small table per model (plus one for the class names), side by side */
+.purity-split { display: flex; gap: 12px; align-items: flex-start; padding-bottom: 4px; }
+.pt { border: 1px solid var(--border); border-radius: var(--radius); border-collapse: separate; border-spacing: 0; overflow: hidden; background: var(--surface-1); flex: 0 0 auto; }
+.pt th, .pt td { height: 34px; padding: 0 9px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.pt thead tr:first-child th { height: 28px; }
+.pt tbody tr:last-child td { border-bottom: 0; border-top: 1px solid var(--text-muted); }
+.pt th.mhead { text-align: center; color: var(--text-primary); }
+.pt .cur { background: rgba(42, 120, 214, 0.10); }
+.pt-names { border-color: transparent; background: transparent; }
+.pt-names th, .pt-names td { padding-left: 0; }
 .conf-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .conf h4 { margin: 0 0 4px; font-size: 13px; }
 .conf table { font-size: 12px; width: 100%; }
