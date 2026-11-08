@@ -224,9 +224,8 @@ function setHover(i, fromMap = false) {
   const w = canvas.getBoundingClientRect().width;
   tip.style.left = `${x + (x > w * 0.6 ? -tip.offsetWidth - 12 : 12)}px`;
   tip.style.top = `${y + 12}px`;
+  // hover only marks the pixel on the map; the map moves only on a click in the latent space (select)
   showSquare(hoverSquare, i);
-  const ll = L.latLng(D.pixels.lat[i], D.pixels.lon[i]);
-  if (!fromMap && !map.getBounds().pad(-0.1).contains(ll)) map.panTo(ll, { animate: true, duration: 0.3 });
 }
 
 // ---------- map ----------
